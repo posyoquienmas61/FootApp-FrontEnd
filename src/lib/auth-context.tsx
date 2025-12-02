@@ -69,12 +69,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const isAuthenticated = !!user
   const unreadCount = notifications.filter((n) => !n.read).length
 
+  // Hidratar usuario desde almacenamiento para persistencia de sesión
+  React.useEffect(() => {
+    if (typeof window === "undefined") return
+    try {
+      const storedUser = localStorage.getItem("user")
+      if (storedUser) {
+        const parsed = JSON.parse(storedUser) as User
+        setUser(parsed)
+      }
+    } catch (e) {
+      // noop
+    }
+  }, [])
+
   const login = React.useCallback((userData: User) => {
     setUser(userData)
   }, [])
 
   const logout = React.useCallback(() => {
     setUser(null)
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.removeItem("authToken")
+        localStorage.removeItem("user")
+        // Expirar cookie authToken
+        document.cookie = "authToken=; path=/; max-age=0"
+      } catch (e) {
+        // noop
+      }
+    }
   }, [])
 
   const markNotificationAsRead = React.useCallback((id: string) => {
