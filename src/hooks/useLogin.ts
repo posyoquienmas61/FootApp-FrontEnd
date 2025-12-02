@@ -1,5 +1,6 @@
 import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/auth-context";
 import { toast } from "sonner";
 
 // Tipos para los datos de login
@@ -45,6 +46,7 @@ const loginUser = async (LoginData: LoginData): Promise<LoginResponse> => {
 
 export function useLogin() {
     const router = useRouter();
+    const { login } = useAuth();
 
     return useMutation({
         mutationFn: loginUser,
@@ -57,28 +59,30 @@ export function useLogin() {
             if (data.data?.token) {
                 localStorage.setItem("authToken", data.data.token);
                 localStorage.setItem("user", JSON.stringify(data.data.user));
-
+                // Actualizar estado global inmediatamente
+                login({
+                    id: data.data.user.id,
+                    name: data.data.user.name,
+                    email: data.data.user.email,
+                    role: (data.data.user.role === "ADMIN" ? "admin" : data.data.user.role === "PODOLOGIST" ? "podologist" : "patient") as any,
+                });
 
                 //Tambien se pueden guardar en cookies para ssr
                 document.cookie = `authToken=${data.data?.token}; path=/; max-age=86400` //24 hrs
             }
             //Redirigir segun el rol del usuario
             const userRole = data.data?.user.role
-
-            // Redirigir después de 2 segundos
-            setTimeout(() => {
-                switch (userRole) {
-                    case "ADMIN":
-                        router.push("/admin/dashboard")
-                        break
-                    case "PODOLOGIST":
-                        router.push("/podologist/dashboard")
-                        break
-                    default:
-                        router.push("/dashboard") // CLIENT
-                }
-
-            }, 1500)
+            // Redirigir de inmediato
+            switch (userRole) {
+                case "ADMIN":
+                    router.push("/admin/dashboard")
+                    break
+                case "PODOLOGIST":
+                    router.push("/podologist/dashboard")
+                    break
+                default:
+                    router.push("/dashboard") // CLIENT
+            }
         },
         onError: (error: Error) => {
             console.error("Error en login:", error);
